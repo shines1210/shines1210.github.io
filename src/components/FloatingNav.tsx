@@ -6,13 +6,11 @@ export type ActiveTab = 'itinerary' | 'guide' | 'weather' | 'settings';
 interface FloatingNavProps {
   activeTab: ActiveTab;
   onSelectTab: (tab: ActiveTab) => void;
-  photoCount?: number;
 }
 
 export const FloatingNav: React.FC<FloatingNavProps> = ({
   activeTab,
   onSelectTab,
-  photoCount = 0,
 }) => {
   const tabs = [
     {
@@ -68,11 +66,6 @@ export const FloatingNav: React.FC<FloatingNavProps> = ({
                   }`}
                   strokeWidth={isActive ? 2.5 : 2}
                 />
-                {tab.id === 'itinerary' && photoCount > 0 && (
-                  <span className="absolute -top-1 -right-2.5 flex h-4 min-w-[16px] px-1 items-center justify-center rounded-full bg-pink-500 text-[10px] font-bold text-white shadow-xs">
-                    {photoCount}
-                  </span>
-                )}
               </div>
               <span
                 className={`text-[12px] font-bold tracking-tight mt-0.5 ${

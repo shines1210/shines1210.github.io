@@ -1,39 +1,31 @@
 import React, { useState, useRef } from 'react';
 import { ITINERARY_DATA } from '../data/itineraryData';
 import { INITIAL_CHECKLIST } from '../data/guideData';
-import { DiaryPhoto } from '../types';
 import { ShimaEnagaSvg } from './ShimaEnagaSvg';
 import {
   Download,
   FileJson,
   FileText,
   Upload,
-  Trash2,
   RotateCcw,
   CheckCircle2,
-  Camera,
   HardDrive,
   Sparkles,
   Info,
   Check,
   AlertTriangle,
-  FileCode,
 } from 'lucide-react';
 
 interface SettingsTabProps {
   completedSpotIds: string[];
-  photos: DiaryPhoto[];
-  onRestoreData: (completedSpots: string[], photos: DiaryPhoto[]) => void;
-  onClearPhotos: () => void;
+  onRestoreData: (completedSpots: string[]) => void;
   onResetCompletedSpots: () => void;
   onClearAll: () => void;
 }
 
 export const SettingsTab: React.FC<SettingsTabProps> = ({
   completedSpotIds,
-  photos,
   onRestoreData,
-  onClearPhotos,
   onResetCompletedSpots,
   onClearAll,
 }) => {
@@ -48,9 +40,17 @@ export const SettingsTab: React.FC<SettingsTabProps> = ({
   const totalCount = allSpots.length;
   const progressPercent = Math.round((completedCount / totalCount) * 100);
 
-  // Estimate storage usage in KB
-  const photosStorageBytes = JSON.stringify(photos).length * 2;
-  const photosStorageKB = Math.round(photosStorageBytes / 1024);
+  // Checklist statistics
+  let checkedCount = 0;
+  try {
+    const savedChecklist = localStorage.getItem('hokkaido_checklist_checked');
+    if (savedChecklist) {
+      const parsed = JSON.parse(savedChecklist);
+      if (Array.isArray(parsed)) checkedCount = parsed.length;
+    }
+  } catch {
+    checkedCount = 0;
+  }
 
   const showNotification = (msg: string) => {
     setDownloadNotice(msg);
@@ -59,6 +59,14 @@ export const SettingsTab: React.FC<SettingsTabProps> = ({
 
   // 1. Download as JSON
   const handleExportJSON = () => {
+    let checkedList: string[] = [];
+    try {
+      const savedChecklist = localStorage.getItem('hokkaido_checklist_checked');
+      if (savedChecklist) checkedList = JSON.parse(savedChecklist);
+    } catch {
+      checkedList = [];
+    }
+
     const exportData = {
       app: 'Hokkaido Snow Season Roadtrip 12Days',
       version: '1.2.0',
@@ -68,11 +76,11 @@ export const SettingsTab: React.FC<SettingsTabProps> = ({
         totalSpots: totalCount,
         completedSpotsCount: completedCount,
         progressPercent: `${progressPercent}%`,
-        photosCount: photos.length,
+        checklistTotal: INITIAL_CHECKLIST.length,
+        checklistCompleted: checkedList.length,
       },
       completedSpotIds,
       completedSpotsDetails: completedSpotsList.map((spot) => {
-        // find which day this spot belongs to
         const day = ITINERARY_DATA.find((d) => d.spots.some((s) => s.id === spot.id));
         return {
           dayNumber: day?.dayNumber,
@@ -86,15 +94,7 @@ export const SettingsTab: React.FC<SettingsTabProps> = ({
           tags: spot.tags.map((t) => t.label),
         };
       }),
-      photos: photos.map((p) => ({
-        id: p.id,
-        dayNumber: p.dayNumber,
-        spotId: p.spotId,
-        spotName: p.spotName,
-        dateStr: p.dateStr,
-        caption: p.caption,
-        imageUrl: p.imageUrl,
-      })),
+      checkedChecklistIds: checkedList,
     };
 
     const jsonString = JSON.stringify(exportData, null, 2);
@@ -109,10 +109,10 @@ export const SettingsTab: React.FC<SettingsTabProps> = ({
     document.body.removeChild(link);
     URL.revokeObjectURL(url);
 
-    showNotification('✓ JSON 完整備份檔已成功下載！');
+    showNotification('✓ JSON 行程紀錄備份檔已成功下載！');
   };
 
-  // 2. Download as Formatted Plain Text / Markdown Journal
+  // 2. Download as Formatted Plain Text
   const handleExportText = () => {
     const timestamp = new Date().toLocaleDateString('zh-TW', {
       year: 'numeric',
@@ -126,8 +126,7 @@ export const SettingsTab: React.FC<SettingsTabProps> = ({
     text += `❄️ 北海道雪季自由行 12Days｜個人旅程紀實備忘錄\n`;
     text += `========================================================\n`;
     text += `匯出時間：${timestamp}\n`;
-    text += `完成進度：${completedCount} / ${totalCount} 個景點 (${progressPercent}%)\n`;
-    text += `照片紀錄：共 ${photos.length} 張旅記相片\n`;
+    text += `景點打卡進度：${completedCount} / ${totalCount} 個景點 (${progressPercent}%)\n`;
     text += `--------------------------------------------------------\n\n`;
 
     ITINERARY_DATA.forEach((day) => {
@@ -142,7 +141,6 @@ export const SettingsTab: React.FC<SettingsTabProps> = ({
 
       day.spots.forEach((spot, idx) => {
         const isDone = completedSpotIds.includes(spot.id);
-        const spotPhotos = photos.filter((p) => p.spotId === spot.id);
         const checkMark = isDone ? '[✓ 已造訪]' : '[ ] 未標記';
 
         text += `${checkMark} ${idx + 1}. ${spot.time} ${spot.name}`;
@@ -154,13 +152,6 @@ export const SettingsTab: React.FC<SettingsTabProps> = ({
 
         if (spot.tags.length > 0) {
           text += `   標籤：${spot.tags.map((t) => t.label).join('、')}\n`;
-        }
-
-        if (spotPhotos.length > 0) {
-          text += `   📸 拍立得照片：${spotPhotos.length} 張\n`;
-          spotPhotos.forEach((p, pIdx) => {
-            text += `      (${pIdx + 1}) [${p.dateStr}] ${p.caption ? `心得：「${p.caption}」` : '（未填寫文字）'}\n`;
-          });
         }
         text += `\n`;
       });
@@ -208,91 +199,6 @@ export const SettingsTab: React.FC<SettingsTabProps> = ({
     showNotification('✓ 文字旅記摘要 (.txt) 已成功下載！');
   };
 
-  // 3. Download standalone HTML with embedded photos
-  const handleExportHTML = () => {
-    const timestamp = new Date().toLocaleDateString('zh-TW');
-
-    let html = `<!DOCTYPE html>
-<html lang="zh-TW">
-<head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>北海道雪季自由行 12Days 旅程寫真備忘錄</title>
-<style>
-  body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background: #f0f4f8; color: #1e293b; padding: 20px; max-width: 800px; margin: 0 auto; }
-  h1 { color: #1d4ed8; font-size: 24px; border-bottom: 2px solid #93c5fd; padding-bottom: 8px; }
-  .summary { background: white; padding: 16px; border-radius: 16px; margin-bottom: 20px; box-shadow: 0 2px 8px rgba(0,0,0,0.06); }
-  .day-card { background: white; border-radius: 16px; padding: 16px; margin-bottom: 16px; box-shadow: 0 2px 8px rgba(0,0,0,0.05); }
-  .day-title { font-size: 18px; font-weight: bold; color: #0f172a; margin-bottom: 8px; }
-  .spot { padding: 10px 0; border-top: 1px solid #f1f5f9; }
-  .badge-done { background: #dcfce7; color: #15803d; font-size: 11px; padding: 2px 8px; border-radius: 12px; font-weight: bold; }
-  .badge-todo { background: #f1f5f9; color: #64748b; font-size: 11px; padding: 2px 8px; border-radius: 12px; }
-  .photo-grid { display: flex; gap: 12px; flex-wrap: wrap; margin-top: 8px; }
-  .photo-box { background: #fafaf9; border: 1px solid #e7e5e4; padding: 8px; border-radius: 12px; width: 220px; box-shadow: 0 2px 4px rgba(0,0,0,0.06); }
-  .photo-box img { width: 100%; height: 160px; object-fit: cover; border-radius: 8px; }
-  .caption { font-size: 12px; color: #475569; margin-top: 6px; font-style: italic; }
-</style>
-</head>
-<body>
-<h1>❄️ 北海道雪季自由行 12Days 旅程紀實備份</h1>
-<div class="summary">
-  <p><strong>匯出時間：</strong>${timestamp}</p>
-  <p><strong>景點打卡進度：</strong>${completedCount} / ${totalCount} 個站點 (${progressPercent}%)</p>
-  <p><strong>照片數量：</strong>${photos.length} 張旅記照片</p>
-</div>
-`;
-
-    ITINERARY_DATA.forEach((day) => {
-      html += `<div class="day-card">
-  <div class="day-title">Day ${day.dayNumber} · ${day.date} (${day.dayOfWeek}) - ${day.title}</div>
-  <p style="font-size: 13px; color: #64748b;">📍 ${day.area} | 🚗 ${day.routeHighlight}</p>
-`;
-
-      day.spots.forEach((spot) => {
-        const isDone = completedSpotIds.includes(spot.id);
-        const spotPhotos = photos.filter((p) => p.spotId === spot.id);
-
-        html += `  <div class="spot">
-    <div>
-      <span class="${isDone ? 'badge-done' : 'badge-todo'}">${isDone ? '✓ 已打卡' : '未打卡'}</span>
-      <strong>${spot.time} ${spot.name}</strong> <span style="font-size: 12px; color: #94a3b8;">${spot.nameJa || ''}</span>
-    </div>
-    <div style="font-size: 12px; color: #475569; margin-top: 4px;">${spot.description}</div>
-`;
-
-        if (spotPhotos.length > 0) {
-          html += `    <div class="photo-grid">\n`;
-          spotPhotos.forEach((p) => {
-            html += `      <div class="photo-box">
-        <img src="${p.imageUrl}" alt="${p.spotName}">
-        <div class="caption">${p.caption || '（照片隨筆記錄）'}</div>
-        <div style="font-size: 10px; color: #94a3b8; margin-top: 2px;">${p.dateStr}</div>
-      </div>\n`;
-          });
-          html += `    </div>\n`;
-        }
-
-        html += `  </div>\n`;
-      });
-
-      html += `</div>\n`;
-    });
-
-    html += `</body></html>`;
-
-    const blob = new Blob([html], { type: 'text/html;charset=utf-8' });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = `hokkaido-trip-album-${new Date().toISOString().slice(0, 10)}.html`;
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    URL.revokeObjectURL(url);
-
-    showNotification('✓ 離線 HTML 寫真備份檔已成功下載！');
-  };
-
   // Restore from JSON
   const handleImportFile = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -304,14 +210,26 @@ export const SettingsTab: React.FC<SettingsTabProps> = ({
         const content = event.target?.result as string;
         const parsed = JSON.parse(content);
 
-        if (Array.isArray(parsed.completedSpotIds) && Array.isArray(parsed.photos)) {
-          onRestoreData(parsed.completedSpotIds, parsed.photos);
-          setImportStatus('✓ 備份檔案已成功還原！已同步至 App。');
+        if (Array.isArray(parsed.completedSpotIds)) {
+          onRestoreData(parsed.completedSpotIds);
+
+          if (Array.isArray(parsed.checkedChecklistIds)) {
+            try {
+              localStorage.setItem(
+                'hokkaido_checklist_checked',
+                JSON.stringify(parsed.checkedChecklistIds)
+              );
+            } catch {
+              // ignore
+            }
+          }
+
+          setImportStatus('✓ 備份檔案已成功還原！已同步景點打卡狀態。');
           setTimeout(() => setImportStatus(null), 4000);
         } else {
           setImportStatus('⚠️ 檔案格式不符合備份檔規格，請確認是否為本 App 匯出的 JSON 檔案。');
         }
-      } catch (err) {
+      } catch {
         setImportStatus('❌ 檔案解析失敗，請確認檔案內容正確。');
       }
       if (fileInputRef.current) fileInputRef.current.value = '';
@@ -332,7 +250,7 @@ export const SettingsTab: React.FC<SettingsTabProps> = ({
             旅程紀錄備份與下載
           </h2>
           <p className="text-xs text-slate-600 mt-0.5">
-            將已打卡的行程清單與隨手拍攝的雪景照片打包封存
+            將已造訪景點進度與行程打包封存為 JSON 或文字檔
           </p>
         </div>
         <div className="shrink-0">
@@ -363,27 +281,27 @@ export const SettingsTab: React.FC<SettingsTabProps> = ({
               <HardDrive className="w-4 h-4" />
             </div>
             <div>
-              <h3 className="text-base font-bold text-slate-900">目前本機儲存統計</h3>
-              <p className="text-xs text-slate-500">記錄保存在您的手機瀏覽器中</p>
+              <h3 className="text-base font-bold text-slate-900">目前本機旅程統計</h3>
+              <p className="text-xs text-slate-500">記錄安全保存在您的手機瀏覽器中</p>
             </div>
           </div>
-          <span className="text-xs font-bold text-slate-600 bg-slate-100 px-2.5 py-1 rounded-xl">
-            約 {photosStorageKB} KB
+          <span className="text-xs font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 px-2.5 py-1 rounded-xl">
+            達成率 {progressPercent}%
           </span>
         </div>
 
         <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5 text-center">
           <div className="p-3 rounded-2xl bg-[#F8FAFC] border border-slate-200/70">
-            <div className="text-[11px] text-slate-500 font-medium">已完成打卡景點</div>
+            <div className="text-[11px] text-slate-500 font-medium">已完成景點</div>
             <div className="text-lg sm:text-xl font-black text-emerald-600 tabular-nums mt-0.5">
               {completedCount} <span className="text-xs font-normal text-slate-400">/ {totalCount}</span>
             </div>
           </div>
 
           <div className="p-3 rounded-2xl bg-[#F8FAFC] border border-slate-200/70">
-            <div className="text-[11px] text-slate-500 font-medium">上傳旅記相片</div>
+            <div className="text-[11px] text-slate-500 font-medium">行李清單勾選</div>
             <div className="text-lg sm:text-xl font-black text-[#2563EB] tabular-nums mt-0.5">
-              {photos.length} <span className="text-xs font-normal text-slate-400">張</span>
+              {checkedCount} <span className="text-xs font-normal text-slate-400">/ {INITIAL_CHECKLIST.length}</span>
             </div>
           </div>
 
@@ -422,7 +340,7 @@ export const SettingsTab: React.FC<SettingsTabProps> = ({
                 </span>
               </div>
               <p className="text-xs text-slate-500 mt-0.5 leading-relaxed">
-                包含已勾選完成的景點狀態、詳細時間、所有上傳的照片及心得文字，可供未來隨時還原。
+                包含已勾選完成的景點狀態、詳細時間與行李打包進度，可供未來隨時還原至 App。
               </p>
             </div>
           </div>
@@ -444,10 +362,10 @@ export const SettingsTab: React.FC<SettingsTabProps> = ({
             </div>
             <div>
               <div className="text-sm font-bold text-slate-900">
-                文字旅記日記純文字檔 (.txt)
+                文字行程清單純文字檔 (.txt)
               </div>
               <p className="text-xs text-slate-500 mt-0.5 leading-relaxed">
-                排版整齊的易讀純文字報告，條列已造訪景點、時間、打卡狀態與旅遊心得，適合列印或存入筆記。
+                排版整齊的易讀純文字報告，條列已造訪景點、時間、導航關鍵字與行李清單，適合列印或存入筆記。
               </p>
             </div>
           </div>
@@ -458,31 +376,6 @@ export const SettingsTab: React.FC<SettingsTabProps> = ({
           >
             <Download className="w-4 h-4" />
             <span>下載 .TXT</span>
-          </button>
-        </div>
-
-        {/* Option 3: Offline Standalone HTML Album */}
-        <div className="p-3.5 rounded-2xl bg-[#F8FAFC] border border-slate-200/80 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
-          <div className="flex items-start gap-3 min-w-0">
-            <div className="w-10 h-10 rounded-2xl bg-purple-100 text-purple-800 flex items-center justify-center shrink-0">
-              <FileCode className="w-5 h-5" />
-            </div>
-            <div>
-              <div className="text-sm font-bold text-slate-900">
-                離線圖文寫真相簿網頁 (.html)
-              </div>
-              <p className="text-xs text-slate-500 mt-0.5 leading-relaxed">
-                單一 HTML 檔案，所有照片已直接內嵌，不需網路即可在任何電腦或手機瀏覽器離線閱讀寫真相簿。
-              </p>
-            </div>
-          </div>
-
-          <button
-            onClick={handleExportHTML}
-            className="w-full sm:w-auto shrink-0 px-4 py-2.5 rounded-xl bg-purple-600 hover:bg-purple-700 active:scale-95 text-white text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer shadow-xs min-h-[40px]"
-          >
-            <Download className="w-4 h-4" />
-            <span>下載 .HTML</span>
           </button>
         </div>
       </section>
@@ -500,7 +393,7 @@ export const SettingsTab: React.FC<SettingsTabProps> = ({
         </div>
 
         <div className="p-3 rounded-2xl bg-emerald-50/70 border border-emerald-200 text-xs text-emerald-900 mb-3 leading-relaxed">
-          若您先前有下載過 <code>.json</code> 備份檔，點擊下方即可上傳檔案還原已完成打卡與旅記相片。
+          若您先前有下載過 <code>.json</code> 備份檔，點擊下方即可上傳檔案還原已完成打卡進度。
         </div>
 
         <label className="w-full py-3 px-4 rounded-2xl border-2 border-dashed border-emerald-300 hover:border-emerald-500 bg-emerald-50/40 hover:bg-emerald-50 flex items-center justify-center gap-2 cursor-pointer transition-colors text-xs font-bold text-emerald-800">
@@ -524,7 +417,7 @@ export const SettingsTab: React.FC<SettingsTabProps> = ({
           </div>
           <div>
             <h3 className="text-base font-bold text-slate-900">資料重置與清理</h3>
-            <p className="text-xs text-slate-500">注意：清除前請記得先備份資料</p>
+            <p className="text-xs text-slate-500">清除前請確認已完成下載備份</p>
           </div>
         </div>
 
@@ -533,7 +426,7 @@ export const SettingsTab: React.FC<SettingsTabProps> = ({
           <div className="flex items-center justify-between p-3 rounded-2xl bg-slate-50 border border-slate-200">
             <div>
               <div className="text-xs font-bold text-slate-800">重置景點打卡狀態</div>
-              <div className="text-[11px] text-slate-500">保留照片，將所有景點恢復為未拜訪</div>
+              <div className="text-[11px] text-slate-500">將所有 12 天景點恢復為未打卡</div>
             </div>
             <button
               onClick={() => {
@@ -548,34 +441,15 @@ export const SettingsTab: React.FC<SettingsTabProps> = ({
             </button>
           </div>
 
-          {/* Clear Photos */}
-          <div className="flex items-center justify-between p-3 rounded-2xl bg-slate-50 border border-slate-200">
-            <div>
-              <div className="text-xs font-bold text-slate-800">清除所有上傳相片 ({photos.length} 張)</div>
-              <div className="text-[11px] text-slate-500">釋放瀏覽器儲存空間</div>
-            </div>
-            <button
-              onClick={() => {
-                if (window.confirm(`確定要刪除所有 ${photos.length} 張旅記照片嗎？此操作不可逆，請先下載備份！`)) {
-                  onClearPhotos();
-                  showNotification('已清空所有旅記相片');
-                }
-              }}
-              className="px-3 py-1.5 rounded-xl text-xs font-semibold text-rose-700 hover:bg-rose-100 border border-rose-300 cursor-pointer"
-            >
-              清空相片
-            </button>
-          </div>
-
           {/* Reset Everything */}
           <div className="flex items-center justify-between p-3 rounded-2xl bg-rose-50/60 border border-rose-200">
             <div>
-              <div className="text-xs font-bold text-rose-900">完全恢復原廠預設</div>
-              <div className="text-[11px] text-rose-700">清空打卡、照片與行李清單紀錄</div>
+              <div className="text-xs font-bold text-rose-900">完全恢復預設值</div>
+              <div className="text-[11px] text-rose-700">清空景點打卡與行李清單紀錄</div>
             </div>
             <button
               onClick={() => {
-                if (window.confirm('⚠️ 警告：這將會清除您在此裝置的所有旅遊打卡、相片與自訂紀錄，確定要重置嗎？')) {
+                if (window.confirm('⚠️ 警告：這將會清除您在此裝置的所有旅遊打卡與行李清單紀錄，確定要重置嗎？')) {
                   onClearAll();
                   showNotification('已重置為全新狀態');
                 }

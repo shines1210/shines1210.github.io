@@ -1,13 +1,12 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { ITINERARY_DATA } from './data/itineraryData';
-import { DayItinerary, DiaryPhoto, SpotCategory } from './types';
+import { DayItinerary, SpotCategory } from './types';
 import { Header } from './components/Header';
 import { FloatingNav, ActiveTab } from './components/FloatingNav';
 import { DaySelector } from './components/DaySelector';
 import { SpotCard } from './components/SpotCard';
 import { SnowTipCard } from './components/SnowTipCard';
 import { HotelCard } from './components/HotelCard';
-import { PhotoModal } from './components/PhotoModal';
 import { ShareModal } from './components/ShareModal';
 import { GuideTab } from './components/GuideTab';
 import { WeatherTab } from './components/WeatherTab';
@@ -18,7 +17,6 @@ import {
   MapPin,
   Calendar,
   Filter,
-  Camera,
   ChevronRight,
   X,
   Compass,
@@ -52,19 +50,6 @@ export default function App() {
     }
   });
 
-  // Diary photos state (stored in localStorage)
-  const [photos, setPhotos] = useState<DiaryPhoto[]>(() => {
-    try {
-      const saved = localStorage.getItem('hokkaido_diary_photos');
-      return saved ? JSON.parse(saved) : [];
-    } catch {
-      return [];
-    }
-  });
-
-  // Active photo being previewed in modal
-  const [activePhoto, setActivePhoto] = useState<DiaryPhoto | null>(null);
-
   // Save completed spots to localStorage
   useEffect(() => {
     try {
@@ -73,15 +58,6 @@ export default function App() {
       console.warn('LocalStorage error:', e);
     }
   }, [completedSpotIds]);
-
-  // Save photos to localStorage
-  useEffect(() => {
-    try {
-      localStorage.setItem('hokkaido_diary_photos', JSON.stringify(photos));
-    } catch (e) {
-      console.warn('LocalStorage error:', e);
-    }
-  }, [photos]);
 
   const currentDayData = useMemo(() => {
     return (
@@ -102,77 +78,8 @@ export default function App() {
     );
   };
 
-  // Compress and save photo
-  const handleAddPhoto = (spotId: string, spotName: string, file: File) => {
-    const reader = new FileReader();
-    reader.onload = (e) => {
-      const img = new Image();
-      img.onload = () => {
-        // Compress image using canvas
-        const canvas = document.createElement('canvas');
-        const MAX_WIDTH = 960;
-        const MAX_HEIGHT = 960;
-        let width = img.width;
-        let height = img.height;
-
-        if (width > height) {
-          if (width > MAX_WIDTH) {
-            height = Math.round((height * MAX_WIDTH) / width);
-            width = MAX_WIDTH;
-          }
-        } else {
-          if (height > MAX_HEIGHT) {
-            width = Math.round((width * MAX_HEIGHT) / height);
-            height = MAX_HEIGHT;
-          }
-        }
-
-        canvas.width = width;
-        canvas.height = height;
-        const ctx = canvas.getContext('2d');
-        if (ctx) {
-          ctx.drawImage(img, 0, 0, width, height);
-          const compressedDataUrl = canvas.toDataURL('image/jpeg', 0.8);
-
-          const now = new Date();
-          const newPhoto: DiaryPhoto = {
-            id: `photo-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
-            dayNumber: selectedDayNumber,
-            spotId,
-            spotName,
-            imageUrl: compressedDataUrl,
-            caption: '',
-            dateStr: `${now.getMonth() + 1}/${now.getDate()} ${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`,
-            timestamp: Date.now(),
-          };
-
-          setPhotos((prev) => [newPhoto, ...prev]);
-        }
-      };
-      if (typeof e.target?.result === 'string') {
-        img.src = e.target.result;
-      }
-    };
-    reader.readAsDataURL(file);
-  };
-
-  const handleDeletePhoto = (photoId: string) => {
-    setPhotos((prev) => prev.filter((p) => p.id !== photoId));
-  };
-
-  const handleUpdateCaption = (photoId: string, newCaption: string) => {
-    setPhotos((prev) =>
-      prev.map((p) => (p.id === photoId ? { ...p, caption: newCaption } : p))
-    );
-  };
-
-  const handleRestoreData = (restoredSpots: string[], restoredPhotos: DiaryPhoto[]) => {
+  const handleRestoreData = (restoredSpots: string[]) => {
     setCompletedSpotIds(restoredSpots);
-    setPhotos(restoredPhotos);
-  };
-
-  const handleClearPhotos = () => {
-    setPhotos([]);
   };
 
   const handleResetCompletedSpots = () => {
@@ -181,7 +88,6 @@ export default function App() {
 
   const handleClearAll = () => {
     setCompletedSpotIds([]);
-    setPhotos([]);
     try {
       localStorage.removeItem('hokkaido_completed_spots');
       localStorage.removeItem('hokkaido_diary_photos');
@@ -308,10 +214,6 @@ export default function App() {
                   index={idx}
                   isCompleted={completedSpotIds.includes(spot.id)}
                   onToggleComplete={handleToggleComplete}
-                  photos={photos.filter((p) => p.spotId === spot.id)}
-                  onAddPhoto={handleAddPhoto}
-                  onDeletePhoto={handleDeletePhoto}
-                  onViewPhoto={(photo) => setActivePhoto(photo)}
                 />
               ))}
 
@@ -328,7 +230,7 @@ export default function App() {
               )}
             </div>
 
-            {/* Snow Tip Card (Required: 每一天行程下方加入「雪況提示」) */}
+            {/* Snow Tip Card */}
             <div className="pt-2">
               <SnowTipCard
                 snowTip={currentDayData.snowTip}
@@ -358,9 +260,7 @@ export default function App() {
         <main className="relative z-10">
           <SettingsTab
             completedSpotIds={completedSpotIds}
-            photos={photos}
             onRestoreData={handleRestoreData}
-            onClearPhotos={handleClearPhotos}
             onResetCompletedSpots={handleResetCompletedSpots}
             onClearAll={handleClearAll}
           />
@@ -374,15 +274,6 @@ export default function App() {
           setActiveTab(tab);
           window.scrollTo({ top: 0, behavior: 'smooth' });
         }}
-        photoCount={photos.length}
-      />
-
-      {/* Photo Viewer Modal */}
-      <PhotoModal
-        photo={activePhoto}
-        onClose={() => setActivePhoto(null)}
-        onDelete={handleDeletePhoto}
-        onUpdateCaption={handleUpdateCaption}
       />
 
       {/* Quick Jump Modal */}

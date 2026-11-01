@@ -1,8 +1,7 @@
-import React, { useRef, useState } from 'react';
-import { Spot, SpotCategory, DiaryPhoto } from '../types';
+import React, { useState } from 'react';
+import { Spot, SpotCategory } from '../types';
 import {
   Utensils,
-  Camera,
   ShoppingBag,
   Landmark,
   Hotel,
@@ -11,11 +10,7 @@ import {
   Fuel,
   SquareParking,
   Sparkles,
-  ImagePlus,
-  Trash2,
-  Maximize2,
   Clock,
-  Compass,
   CheckCircle2,
   Info,
 } from 'lucide-react';
@@ -25,10 +20,6 @@ interface SpotCardProps {
   index: number;
   isCompleted?: boolean;
   onToggleComplete?: (spotId: string) => void;
-  photos: DiaryPhoto[];
-  onAddPhoto: (spotId: string, spotName: string, file: File) => void;
-  onDeletePhoto: (photoId: string) => void;
-  onViewPhoto: (photo: DiaryPhoto) => void;
 }
 
 const CATEGORY_CONFIG: Record<
@@ -84,25 +75,9 @@ export const SpotCard: React.FC<SpotCardProps> = ({
   index,
   isCompleted = false,
   onToggleComplete,
-  photos,
-  onAddPhoto,
-  onDeletePhoto,
-  onViewPhoto,
 }) => {
-  const fileInputRef = useRef<HTMLInputElement>(null);
-  const [showDetails, setShowDetails] = useState(false);
-
   const cat = CATEGORY_CONFIG[spot.category] || CATEGORY_CONFIG.sightseeing;
   const CategoryIcon = cat.icon;
-
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      onAddPhoto(spot.id, spot.name, file);
-    }
-    // reset input value so re-uploading same file triggers event
-    if (fileInputRef.current) fileInputRef.current.value = '';
-  };
 
   const handleOpenGoogleMaps = () => {
     const query = encodeURIComponent(spot.mapQuery || spot.name);
@@ -252,73 +227,7 @@ export const SpotCard: React.FC<SpotCardProps> = ({
           </div>
         </div>
 
-        {/* Photos & Journaling Area */}
-        <div className="mt-3 pt-2.5 border-t border-slate-100">
-          <div className="flex items-center justify-between mb-2">
-            <div className="flex items-center gap-1.5 text-xs font-bold text-slate-700">
-              <Camera className="w-3.5 h-3.5 text-[#3B82F6]" />
-              <span>本站旅記相簿</span>
-              {photos.length > 0 && (
-                <span className="text-[10px] bg-[#EFF6FF] text-[#2563EB] px-1.5 py-0.2 rounded-full font-bold">
-                  {photos.length}
-                </span>
-              )}
-            </div>
 
-            {/* Upload Button */}
-            <label className="inline-flex items-center gap-1 text-xs font-medium text-[#2563EB] hover:text-[#1D4ED8] bg-[#EFF6FF] hover:bg-[#DBEAFE] px-2.5 py-1.5 rounded-xl border border-[#BFDBFE] transition-colors cursor-pointer active:scale-95">
-              <ImagePlus className="w-3.5 h-3.5" />
-              <span>拍照 / 上傳</span>
-              <input
-                ref={fileInputRef}
-                type="file"
-                accept="image/*"
-                capture="environment"
-                onChange={handleFileChange}
-                className="hidden"
-              />
-            </label>
-          </div>
-
-          {/* Photo Thumbnails List */}
-          {photos.length > 0 ? (
-            <div className="flex items-center gap-2 overflow-x-auto no-scrollbar py-1">
-              {photos.map((photo) => (
-                <div
-                  key={photo.id}
-                  className="relative shrink-0 group rounded-xl overflow-hidden border border-slate-200 shadow-2xs w-20 h-20 bg-slate-100"
-                >
-                  <img
-                    src={photo.imageUrl}
-                    alt={photo.caption || spot.name}
-                    referrerPolicy="no-referrer"
-                    className="w-full h-full object-cover transition-transform duration-200 group-hover:scale-105"
-                  />
-                  <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-1.5">
-                    <button
-                      onClick={() => onViewPhoto(photo)}
-                      className="p-1 rounded-full bg-white/90 text-slate-800 hover:text-blue-600"
-                      title="放大檢視"
-                    >
-                      <Maximize2 className="w-3.5 h-3.5" />
-                    </button>
-                    <button
-                      onClick={() => onDeletePhoto(photo.id)}
-                      className="p-1 rounded-full bg-white/90 text-red-600 hover:text-red-800"
-                      title="刪除"
-                    >
-                      <Trash2 className="w-3.5 h-3.5" />
-                    </button>
-                  </div>
-                </div>
-              ))}
-            </div>
-          ) : (
-            <div className="text-[11px] text-slate-400 italic py-1 flex items-center gap-1">
-              <span>尚未上傳照片，抵達時可拍照打卡記錄專屬雪景～</span>
-            </div>
-          )}
-        </div>
 
         {/* Navigation Action CTA */}
         <div className="mt-3.5 pt-2 flex items-center justify-end gap-2">

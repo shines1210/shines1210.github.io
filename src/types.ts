@@ -54,17 +54,6 @@ export interface DayItinerary {
   spots: Spot[];
 }
 
-export interface DiaryPhoto {
-  id: string;
-  dayNumber: number;
-  spotId?: string;
-  spotName?: string;
-  imageUrl: string;
-  caption: string;
-  dateStr: string;
-  timestamp: number;
-}
-
 export interface RegionWeather {
   region: string;
   condition: string;
