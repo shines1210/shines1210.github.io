@@ -1,0 +1,45 @@
+@import "tailwindcss";
+
+@layer base {
+  body {
+    font-family: 'Zen Maru Gothic', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    -webkit-tap-highlight-color: transparent;
+  }
+}
+
+/* Custom delicate Japanese snow background & animations */
+@keyframes gentle-fall {
+  0% {
+    transform: translateY(-20px) translateX(0);
+    opacity: 0;
+  }
+  20% {
+    opacity: 0.8;
+  }
+  80% {
+    opacity: 0.8;
+  }
+  100% {
+    transform: translateY(100vh) translateX(30px);
+    opacity: 0;
+  }
+}
+
+.animate-snow-1 {
+  animation: gentle-fall 14s linear infinite;
+}
+.animate-snow-2 {
+  animation: gentle-fall 10s linear infinite 3s;
+}
+.animate-snow-3 {
+  animation: gentle-fall 18s linear infinite 5s;
+}
+
+/* Hide scrollbar for clean horizontal pill slider */
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}

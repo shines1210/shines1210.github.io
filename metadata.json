@@ -1,0 +1,8 @@
+{
+  "name": "北海道雪季自由行 12Days",
+  "description": "日式風格北海道雪季12日自由行隨身導覽App，包含精確每日時間動線、景點彩色推薦、Google Maps導航、加油停車情報、雪況即時提示與旅記拍照上傳功能。",
+  "requestFramePermissions": [],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}
