@@ -18,7 +18,6 @@ import {
   Check,
   AlertTriangle,
   FileCode,
-  FolderArchive,
 } from 'lucide-react';
 
 interface SettingsTabProps {
@@ -485,35 +484,6 @@ export const SettingsTab: React.FC<SettingsTabProps> = ({
             <Download className="w-4 h-4" />
             <span>下載 .HTML</span>
           </button>
-        </div>
-
-        {/* Option 4: Compiled Dist Web Package (ZIP) */}
-        <div className="p-3.5 rounded-2xl bg-[#F8FAFC] border border-slate-200/80 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
-          <div className="flex items-start gap-3 min-w-0">
-            <div className="w-10 h-10 rounded-2xl bg-teal-100 text-teal-800 flex items-center justify-center shrink-0">
-              <FolderArchive className="w-5 h-5" />
-            </div>
-            <div>
-              <div className="text-sm font-bold text-slate-900 flex items-center gap-1.5">
-                <span>編譯發布安裝包 (dist.zip)</span>
-                <span className="text-[10px] bg-teal-100 text-teal-800 font-bold px-1.5 py-0.2 rounded-md">
-                  完整靜態包
-                </span>
-              </div>
-              <p className="text-xs text-slate-500 mt-0.5 leading-relaxed">
-                包含 dist/index.html、css 與 js 完整編譯檔案，解壓縮後即可直接上傳至任何網站空間（如 GitHub Pages、Vercel、Netlify）。
-              </p>
-            </div>
-          </div>
-
-          <a
-            href="/dist.zip"
-            download="hokkaido-app-dist.zip"
-            className="w-full sm:w-auto shrink-0 px-4 py-2.5 rounded-xl bg-teal-600 hover:bg-teal-700 active:scale-95 text-white text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer shadow-xs min-h-[40px] text-center"
-          >
-            <Download className="w-4 h-4" />
-            <span>下載 .ZIP</span>
-          </a>
         </div>
       </section>
 
