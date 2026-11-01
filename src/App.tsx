@@ -12,6 +12,7 @@ import { GuideTab } from './components/GuideTab';
 import { WeatherTab } from './components/WeatherTab';
 import { SettingsTab } from './components/SettingsTab';
 import { ShimaEnagaSvg } from './components/ShimaEnagaSvg';
+import { useLiveWeather } from './hooks/useLiveWeather';
 import {
   Sparkles,
   MapPin,
@@ -39,6 +40,10 @@ export default function App() {
   const [selectedCategory, setSelectedCategory] = useState<'all' | SpotCategory>('all');
   const [quickJumpOpen, setQuickJumpOpen] = useState(false);
   const [shareModalOpen, setShareModalOpen] = useState(false);
+
+  // Live real-time weather hook
+  const liveWeather = useLiveWeather();
+  const currentDayLive = liveWeather.weatherMap[selectedDayNumber];
 
   // Completed spots state (stored in localStorage)
   const [completedSpotIds, setCompletedSpotIds] = useState<string[]>(() => {
@@ -118,10 +123,17 @@ export default function App() {
         currentDay={selectedDayNumber}
         totalDays={ITINERARY_DATA.length}
         currentArea={currentDayData.area}
+        liveTemp={currentDayLive?.currentTemp}
+        apparentTemp={currentDayLive?.apparentTemp}
+        isLiveWeather={currentDayLive?.isLive}
         onOpenQuickJump={() => setQuickJumpOpen(true)}
         onOpenShare={() => setShareModalOpen(true)}
         onOpenSettings={() => {
           setActiveTab('settings');
+          window.scrollTo({ top: 0, behavior: 'smooth' });
+        }}
+        onOpenWeather={() => {
+          setActiveTab('weather');
           window.scrollTo({ top: 0, behavior: 'smooth' });
         }}
       />
@@ -230,11 +242,19 @@ export default function App() {
               )}
             </div>
 
-            {/* Snow Tip Card */}
+            {/* Snow Tip Card with Live Synced Temperature */}
             <div className="pt-2">
               <SnowTipCard
                 snowTip={currentDayData.snowTip}
                 dayNumber={currentDayData.dayNumber}
+                liveTemp={currentDayLive?.currentTemp}
+                apparentTemp={currentDayLive?.apparentTemp}
+                liveCondition={currentDayLive?.condition}
+                liveIceIndex={currentDayLive?.iceIndex}
+                onViewWeather={() => {
+                  setActiveTab('weather');
+                  window.scrollTo({ top: 0, behavior: 'smooth' });
+                }}
               />
             </div>
           </div>
@@ -248,10 +268,13 @@ export default function App() {
         </main>
       )}
 
-      {/* Tab 3: 天氣 (Weather & Snow) */}
+      {/* Tab 3: 天氣 (Weather & Snow) with Live Sync Hook */}
       {activeTab === 'weather' && (
         <main className="relative z-10">
-          <WeatherTab initialDay={selectedDayNumber} />
+          <WeatherTab
+            initialDay={selectedDayNumber}
+            liveWeatherHook={liveWeather}
+          />
         </main>
       )}
 
@@ -303,6 +326,7 @@ export default function App() {
                 const completedForDay = day.spots.filter((s) =>
                   completedSpotIds.includes(s.id)
                 ).length;
+                const dayLive = liveWeather.weatherMap[day.dayNumber];
 
                 return (
                   <button
@@ -327,6 +351,17 @@ export default function App() {
                         <span className="text-xs text-slate-400">
                           {day.date} ({day.dayOfWeek})
                         </span>
+                        {dayLive && (
+                          <span
+                            className={`text-[11px] font-bold px-1.5 py-0.2 rounded ${
+                              dayLive.currentTemp <= 0
+                                ? 'bg-blue-100 text-blue-700'
+                                : 'bg-emerald-100 text-emerald-800'
+                            }`}
+                          >
+                            {dayLive.currentTemp > 0 ? `+${dayLive.currentTemp}` : dayLive.currentTemp}°
+                          </span>
+                        )}
                       </div>
                       <div className="text-sm font-bold text-slate-800 truncate mt-0.5">
                         {day.title}

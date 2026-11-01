@@ -1,14 +1,30 @@
 import React from 'react';
 import { SnowTip } from '../types';
-import { AlertTriangle, Snowflake, Thermometer, Sunset, ShieldAlert, Sparkles } from 'lucide-react';
+import { AlertTriangle, Snowflake, Thermometer, Sunset, ShieldAlert, Sparkles, RefreshCw } from 'lucide-react';
 
 interface SnowTipCardProps {
   snowTip: SnowTip;
   dayNumber: number;
+  liveTemp?: number;
+  apparentTemp?: number;
+  liveCondition?: string;
+  liveIceIndex?: string;
+  onViewWeather?: () => void;
 }
 
-export const SnowTipCard: React.FC<SnowTipCardProps> = ({ snowTip, dayNumber }) => {
-  const isHighRisk = snowTip.freezeLevel === '極高危險';
+export const SnowTipCard: React.FC<SnowTipCardProps> = ({
+  snowTip,
+  dayNumber,
+  liveTemp,
+  apparentTemp,
+  liveCondition,
+  liveIceIndex,
+  onViewWeather,
+}) => {
+  const isHighRisk =
+    snowTip.freezeLevel === '極高危險' ||
+    (liveIceIndex && liveIceIndex.includes('極高')) ||
+    (liveTemp != null && liveTemp <= 0);
 
   return (
     <section
@@ -45,23 +61,61 @@ export const SnowTipCard: React.FC<SnowTipCardProps> = ({ snowTip, dayNumber }) 
             </div>
           </div>
 
-          <span
-            className={`text-xs font-bold px-2.5 py-1 rounded-full border shadow-2xs shrink-0 ${
-              isHighRisk
-                ? 'bg-rose-100 text-rose-800 border-rose-300'
-                : 'bg-blue-100 text-blue-800 border-blue-300'
-            }`}
-          >
-            結冰危險度：{snowTip.freezeLevel}
-          </span>
+          <div className="flex items-center gap-1.5 shrink-0">
+            <span
+              className={`text-xs font-bold px-2.5 py-1 rounded-full border shadow-2xs ${
+                isHighRisk
+                  ? 'bg-rose-100 text-rose-800 border-rose-300'
+                  : 'bg-blue-100 text-blue-800 border-blue-300'
+              }`}
+            >
+              {liveIceIndex ? `結冰警戒：${liveIceIndex}` : `結冰危險度：${snowTip.freezeLevel}`}
+            </span>
+          </div>
         </div>
+
+        {/* Live Weather Sync Strip if available */}
+        {liveTemp != null && (
+          <div className="mb-3 p-2.5 rounded-2xl bg-white/95 border border-blue-200 shadow-2xs flex items-center justify-between gap-2">
+            <div className="flex items-center gap-2 min-w-0">
+              <span className="relative flex h-2.5 w-2.5 shrink-0">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
+                <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-500" />
+              </span>
+              <div className="text-xs truncate">
+                <span className="font-bold text-slate-800">即時觀測氣溫：</span>
+                <span className={`font-black ml-1 ${liveTemp <= 0 ? 'text-blue-600' : 'text-emerald-700'}`}>
+                  {liveTemp > 0 ? `+${liveTemp}` : liveTemp}°C
+                </span>
+                {apparentTemp != null && (
+                  <span className="text-slate-500 ml-1.5 hidden xs:inline">
+                    (體感 {apparentTemp > 0 ? `+${apparentTemp}` : apparentTemp}°C)
+                  </span>
+                )}
+                {liveCondition && (
+                  <span className="text-slate-600 ml-2 font-medium">· {liveCondition}</span>
+                )}
+              </div>
+            </div>
+
+            {onViewWeather && (
+              <button
+                onClick={onViewWeather}
+                className="shrink-0 text-[11px] font-bold text-[#2563EB] hover:underline cursor-pointer flex items-center gap-0.5"
+              >
+                <span>天氣詳情</span>
+                <span>➔</span>
+              </button>
+            )}
+          </div>
+        )}
 
         {/* Indicators Grid */}
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 my-3 text-xs">
           <div className="flex items-start gap-2 bg-white/80 backdrop-blur-xs p-2.5 rounded-2xl border border-slate-200/80">
             <Thermometer className="w-4 h-4 text-blue-600 shrink-0 mt-0.5" />
             <div>
-              <span className="font-bold text-slate-800">預估氣溫：</span>
+              <span className="font-bold text-slate-800">行程預估氣溫：</span>
               <span className="text-slate-600 ml-1">{snowTip.tempRange}</span>
             </div>
           </div>

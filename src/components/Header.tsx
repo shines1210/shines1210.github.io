@@ -1,23 +1,31 @@
 import React from 'react';
 import { ShimaEnagaSvg } from './ShimaEnagaSvg';
-import { Sparkles, Calendar, Compass, MapPin, Share2, Settings } from 'lucide-react';
+import { Sparkles, Calendar, Compass, MapPin, Share2, Settings, Thermometer } from 'lucide-react';
 
 interface HeaderProps {
   currentDay: number;
   totalDays: number;
   currentArea: string;
+  liveTemp?: number;
+  apparentTemp?: number;
+  isLiveWeather?: boolean;
   onOpenQuickJump?: () => void;
   onOpenShare?: () => void;
   onOpenSettings?: () => void;
+  onOpenWeather?: () => void;
 }
 
 export const Header: React.FC<HeaderProps> = ({
   currentDay,
   totalDays,
   currentArea,
+  liveTemp,
+  apparentTemp,
+  isLiveWeather,
   onOpenQuickJump,
   onOpenShare,
   onOpenSettings,
+  onOpenWeather,
 }) => {
   return (
     <header className="sticky top-0 z-30 bg-white/92 backdrop-blur-md border-b border-slate-200/80 shadow-[0_2px_12px_rgba(59,130,246,0.06)]">
@@ -94,15 +102,40 @@ export const Header: React.FC<HeaderProps> = ({
           </div>
         </div>
 
-        {/* Sub-strip with Dates & Current Location */}
-        <div className="mt-2 pt-2 border-t border-slate-100 flex items-center justify-between text-xs text-slate-600">
-          <div className="flex items-center gap-1 text-slate-500 font-medium">
-            <Calendar className="w-3.5 h-3.5 text-[#3B82F6]" />
-            <span>11/11 (週三) – 11/22 (週日)</span>
+        {/* Sub-strip with Dates, Location & Live Temperature */}
+        <div className="mt-2 pt-2 border-t border-slate-100 flex items-center justify-between text-xs text-slate-600 gap-2">
+          <div className="flex items-center gap-1 text-slate-500 font-medium truncate">
+            <Calendar className="w-3.5 h-3.5 text-[#3B82F6] shrink-0" />
+            <span className="truncate">11/11 – 11/22</span>
           </div>
-          <div className="flex items-center gap-1 text-[#1E3A8A] font-semibold bg-[#EFF6FF] px-2 py-0.5 rounded-lg border border-[#DBEAFE]">
-            <MapPin className="w-3 h-3 text-[#3B82F6]" />
-            <span className="truncate max-w-[130px]">{currentArea}</span>
+
+          <div className="flex items-center gap-1.5 shrink-0">
+            {/* Live Temperature Chip (Clickable to jump to Weather) */}
+            {liveTemp != null && (
+              <button
+                onClick={onOpenWeather}
+                className={`flex items-center gap-1 px-2 py-0.5 rounded-lg border text-xs font-bold transition-all cursor-pointer ${
+                  liveTemp <= 0
+                    ? 'bg-blue-50 text-blue-700 border-blue-200 hover:bg-blue-100'
+                    : 'bg-emerald-50 text-emerald-800 border-emerald-200 hover:bg-emerald-100'
+                }`}
+                title="點擊查看即時氣象與黑冰觀測"
+              >
+                <span className="relative flex h-2 w-2 shrink-0">
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
+                  <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500" />
+                </span>
+                <Thermometer className="w-3 h-3 text-[#2563EB] shrink-0" />
+                <span>
+                  {liveTemp > 0 ? `+${liveTemp}` : liveTemp}°C
+                </span>
+              </button>
+            )}
+
+            <div className="flex items-center gap-1 text-[#1E3A8A] font-semibold bg-[#EFF6FF] px-2 py-0.5 rounded-lg border border-[#DBEAFE]">
+              <MapPin className="w-3 h-3 text-[#3B82F6] shrink-0" />
+              <span className="truncate max-w-[110px] sm:max-w-[140px]">{currentArea}</span>
+            </div>
           </div>
         </div>
       </div>
